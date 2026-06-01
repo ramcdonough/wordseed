@@ -1,48 +1,33 @@
 'use client'
 
 import { useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/lib/firebase/client'
 import { useAuthStore } from '@/stores/auth'
 import { pullFromCloud, pushLocalDataToCloud } from '@/lib/sync/service'
 import { subscribeToChanges } from '@/lib/sync/realtime'
 
-// Boot: wire up auth state listener. Call once at the app shell level.
+// Boot: wire up Firebase auth listener. Call once at the app shell level.
 export function useAuthBoot() {
-  const { setSession, setLoading } = useAuthStore()
+  const { setUser, setLoading } = useAuthStore()
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      setUser(user)
       setLoading(false)
 
-      if (session?.user) {
-        // Upload any locally-stored data, then pull cloud state
-        pushLocalDataToCloud(session.user.id).then(() =>
-          pullFromCloud(session.user.id)
-        )
-        subscribeToChanges(session.user.id)
+      if (user) {
+        // Upload any pre-existing local data, then pull cloud state
+        await pushLocalDataToCloud(user.uid)
+        await pullFromCloud(user.uid)
+        subscribeToChanges(user.uid)
       }
     })
 
-    // Listen for auth state changes (sign in / sign out / token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      setLoading(false)
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        pushLocalDataToCloud(session.user.id).then(() =>
-          pullFromCloud(session.user.id)
-        )
-        subscribeToChanges(session.user.id)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [setSession, setLoading])
+    return () => unsubAuth()
+  }, [setUser, setLoading])
 }
 
-// Lightweight hook for reading auth state anywhere
 export function useUser() {
   return useAuthStore((s) => s.user)
 }

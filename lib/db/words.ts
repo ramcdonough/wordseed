@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 
 // Helper: get current user id (may be null if not signed in)
 function userId() {
-  return useAuthStore.getState().user?.id ?? null
+  return useAuthStore.getState().user?.uid ?? null
 }
 
 export async function createWord(

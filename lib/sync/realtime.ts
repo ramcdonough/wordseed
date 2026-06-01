@@ -1,43 +1,44 @@
 'use client'
 
-import { supabase } from '@/lib/supabase/client'
-import { db } from '@/lib/db/schema'
-import { wordFromCloud, collectionFromCloud } from '@/lib/supabase/transforms'
-import type { RealtimeChannel } from '@supabase/supabase-js'
+import { onSnapshot } from 'firebase/firestore'
+import { db as dexie } from '@/lib/db/schema'
+import { wordsCol, colsCol } from '@/lib/firebase/schema'
+import type { Word, Collection } from '@/types'
 
-let channel: RealtimeChannel | null = null
+type Unsubscribe = () => void
+let unsubs: Unsubscribe[] = []
 
-export function subscribeToChanges(userId: string): () => void {
-  if (channel) channel.unsubscribe()
+export function subscribeToChanges(userId: string): Unsubscribe {
+  // Clean up any existing listeners
+  unsubs.forEach(u => u())
+  unsubs = []
 
-  channel = supabase
-    .channel(`user-${userId}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'words', filter: `user_id=eq.${userId}` },
-      async (payload) => {
-        if (payload.eventType === 'DELETE') {
-          await db.words.delete(payload.old.id as string)
-        } else if (payload.new) {
-          await db.words.put(wordFromCloud(payload.new as Record<string, unknown>))
-        }
+  // Words — real-time mirror into Dexie
+  const unsubWords = onSnapshot(wordsCol(userId), (snap) => {
+    snap.docChanges().forEach(async (change) => {
+      if (change.type === 'removed') {
+        await dexie.words.delete(change.doc.id)
+      } else {
+        await dexie.words.put(change.doc.data() as Word)
       }
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'collections', filter: `user_id=eq.${userId}` },
-      async (payload) => {
-        if (payload.eventType === 'DELETE') {
-          await db.collections.delete(payload.old.id as string)
-        } else if (payload.new) {
-          await db.collections.put(collectionFromCloud(payload.new as Record<string, unknown>))
-        }
+    })
+  })
+
+  // Collections — real-time mirror into Dexie
+  const unsubCols = onSnapshot(colsCol(userId), (snap) => {
+    snap.docChanges().forEach(async (change) => {
+      if (change.type === 'removed') {
+        await dexie.collections.delete(change.doc.id)
+      } else {
+        await dexie.collections.put(change.doc.data() as Collection)
       }
-    )
-    .subscribe()
+    })
+  })
+
+  unsubs = [unsubWords, unsubCols]
 
   return () => {
-    channel?.unsubscribe()
-    channel = null
+    unsubs.forEach(u => u())
+    unsubs = []
   }
 }

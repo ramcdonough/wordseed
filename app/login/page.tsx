@@ -1,39 +1,74 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, ArrowRight, CheckCircle, Sparkles } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { signInWithPopup, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth'
+import { auth } from '@/lib/firebase/client'
+import { useUser, useAuthLoading } from '@/hooks/useAuth'
+import { useAuthBoot } from '@/hooks/useAuth'
+import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
+// Google icon SVG
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  )
+}
+
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
+  useAuthBoot()
+  const user = useUser()
+  const loading = useAuthLoading()
+  const router = useRouter()
+  const [signing, setSigning] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = email.trim()
-    if (!trimmed) return
+  // Redirect if already signed in
+  useEffect(() => {
+    if (!loading && user) router.replace('/')
+  }, [loading, user, router])
 
-    setLoading(true)
+  // Handle redirect result (mobile fallback)
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) router.replace('/')
+    }).catch(() => {})
+  }, [router])
+
+  const signInWithGoogle = async () => {
+    setSigning(true)
     setError('')
+    const provider = new GoogleAuthProvider()
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-      },
-    })
-
-    setLoading(false)
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setSent(true)
+    try {
+      // Popup works on desktop; fall back to redirect on mobile
+      await signInWithPopup(auth, provider)
+      router.replace('/')
+    } catch (err: unknown) {
+      const firebaseErr = err as { code?: string }
+      if (firebaseErr?.code === 'auth/popup-blocked' || firebaseErr?.code === 'auth/popup-closed-by-user') {
+        // Mobile browsers block popups — use redirect instead
+        await signInWithRedirect(auth, provider)
+      } else {
+        setError('Sign-in failed. Please try again.')
+        setSigning(false)
+      }
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+        <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -42,111 +77,72 @@ export default function LoginPage() {
       style={{ background: 'linear-gradient(160deg, #09090b 0%, #0e0e1a 50%, #09090b 100%)' }}
     >
       {/* Ambient glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, #818cf8, transparent 70%)' }} />
+      <div
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #818cf8, transparent 70%)' }}
+      />
 
-      <div className="relative w-full max-w-sm">
-        <AnimatePresence mode="wait">
-          {!sent ? (
-            <motion.div
-              key="form"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col gap-8"
+      <div className="relative w-full max-w-sm flex flex-col gap-10">
+        {/* Brand */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-center gap-3 text-center"
+        >
+          <motion.div
+            animate={{ y: [0, -7, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="text-6xl"
+          >
+            🌱
+          </motion.div>
+          <h1 className="text-4xl font-black text-gradient">Wordseed</h1>
+          <p className="text-[var(--color-text-muted)] text-base leading-relaxed max-w-xs">
+            Build a vocabulary that actually sticks.
+          </p>
+        </motion.div>
+
+        {/* Sign-in */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="flex flex-col gap-4"
+        >
+          <Button
+            onClick={signInWithGoogle}
+            loading={signing}
+            size="xl"
+            fullWidth
+            variant="secondary"
+            className="!border-[var(--color-border)] hover:!border-[var(--color-primary)]/40"
+          >
+            {!signing && <GoogleIcon />}
+            Continue with Google
+          </Button>
+
+          {error && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-sm text-[var(--color-error)] text-center"
             >
-              {/* Logo */}
-              <div className="flex flex-col items-center gap-2 text-center">
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                  className="text-5xl mb-1"
-                >
-                  🌱
-                </motion.div>
-                <h1 className="text-3xl font-black text-gradient">Wordseed</h1>
-                <p className="text-[var(--color-text-muted)] text-sm">
-                  Your vocabulary, everywhere.
-                </p>
-              </div>
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-faint)]" />
-                  <input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoFocus
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl pl-11 pr-4 py-3.5 text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
-                  />
-                </div>
-
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-sm text-[var(--color-error)] text-center"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-
-                <Button type="submit" size="xl" fullWidth loading={loading} className="glow-primary">
-                  Continue with Email
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </form>
-
-              <div className="flex flex-col gap-2 text-center">
-                <p className="text-xs text-[var(--color-text-faint)]">
-                  We&apos;ll send a magic link — no password needed.
-                </p>
-                <div className="flex items-center justify-center gap-3 text-[10px] text-[var(--color-text-faint)]">
-                  <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> Syncs across all devices</span>
-                  <span>·</span>
-                  <span>Works offline</span>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="sent"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="flex flex-col items-center gap-5 text-center"
-            >
-              <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-              >
-                <CheckCircle className="w-16 h-16 text-[var(--color-success)]" strokeWidth={1.5} />
-              </motion.div>
-              <div>
-                <h2 className="text-2xl font-black text-[var(--color-text)] mb-2">Check your email</h2>
-                <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
-                  We sent a magic link to<br />
-                  <span className="text-[var(--color-text)] font-medium">{email}</span>
-                </p>
-              </div>
-              <p className="text-xs text-[var(--color-text-faint)]">
-                Tap the link in the email to sign in.<br />
-                You can close this tab.
-              </p>
-              <button
-                onClick={() => setSent(false)}
-                className="text-xs text-[var(--color-primary)] hover:underline"
-              >
-                Use a different email
-              </button>
-            </motion.div>
+              {error}
+            </motion.p>
           )}
-        </AnimatePresence>
+
+          <div className="flex items-center justify-center gap-3 text-[11px] text-[var(--color-text-faint)]">
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              Syncs between all devices
+            </span>
+            <span>·</span>
+            <span>Works offline</span>
+            <span>·</span>
+            <span>Free forever</span>
+          </div>
+        </motion.div>
       </div>
     </div>
   )

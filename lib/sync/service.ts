@@ -1,108 +1,114 @@
 'use client'
 
-import { supabase } from '@/lib/supabase/client'
-import { db } from '@/lib/db/schema'
-import {
-  wordToCloud, wordFromCloud,
-  collectionToCloud, collectionFromCloud,
-  statsToCloud, statsFromCloud,
-} from '@/lib/supabase/transforms'
+/**
+ * Sync service — Dexie (local) ↔ Firestore (cloud)
+ *
+ * Firestore SDK caches everything in IndexedDB automatically, so the app
+ * works offline without any extra effort. This layer only exists to keep
+ * Dexie (used for live queries in the UI) in sync with Firestore.
+ *
+ * Flow:
+ *  write  → Dexie first (instant UI) → Firestore in background
+ *  read   → Dexie (fast, local)
+ *  sync   → on sign-in pull Firestore → populate Dexie
+ *  realtime → Firestore onSnapshot → update Dexie → UI re-renders
+ */
 
-// ── Pull: Cloud → Local ───────────────────────────────────────────────────────
-// Called on sign-in and on app focus. Merges cloud into local Dexie.
+import {
+  getDocs, setDoc, deleteDoc, writeBatch,
+} from 'firebase/firestore'
+import { db as dexie } from '@/lib/db/schema'
+import { db as firestore } from '@/lib/firebase/client'
+import { wordsCol, wordDoc, colsCol, colDoc, statsCol, statDoc } from '@/lib/firebase/schema'
+import type { Word, Collection, DailyStats } from '@/types'
+
+// ── Helpers: strip undefined so Firestore doesn't complain ───────────────────
+function clean<T extends object>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as T
+}
+
+// ── Pull: Firestore → Dexie ──────────────────────────────────────────────────
 export async function pullFromCloud(userId: string): Promise<void> {
   try {
-    const [wordsRes, collectionsRes, statsRes] = await Promise.all([
-      supabase.from('words').select('*').eq('user_id', userId),
-      supabase.from('collections').select('*').eq('user_id', userId),
-      supabase.from('daily_stats').select('*').eq('user_id', userId),
+    const [wordsSnap, colsSnap, statsSnap] = await Promise.all([
+      getDocs(wordsCol(userId)),
+      getDocs(colsCol(userId)),
+      getDocs(statsCol(userId)),
     ])
 
-    if (wordsRes.data?.length) {
-      await db.words.bulkPut(wordsRes.data.map(wordFromCloud))
+    if (wordsSnap.size) {
+      await dexie.words.bulkPut(wordsSnap.docs.map(d => d.data() as Word))
     }
-    if (collectionsRes.data?.length) {
-      await db.collections.bulkPut(collectionsRes.data.map(collectionFromCloud))
+    if (colsSnap.size) {
+      await dexie.collections.bulkPut(colsSnap.docs.map(d => d.data() as Collection))
     }
-    if (statsRes.data?.length) {
-      await db.dailyStats.bulkPut(statsRes.data.map(statsFromCloud))
+    if (statsSnap.size) {
+      await dexie.dailyStats.bulkPut(statsSnap.docs.map(d => d.data() as DailyStats))
     }
   } catch (err) {
     console.warn('[sync] pull failed:', err)
   }
 }
 
-// ── Push: Local → Cloud ───────────────────────────────────────────────────────
-// Called once after sign-in to upload any pre-existing local data.
+// ── Push: Dexie → Firestore (first-time migration) ──────────────────────────
 export async function pushLocalDataToCloud(userId: string): Promise<void> {
   try {
-    const [words, collections, stats] = await Promise.all([
-      db.words.toArray(),
-      db.collections.toArray(),
-      db.dailyStats.toArray(),
+    const [words, cols, stats] = await Promise.all([
+      dexie.words.toArray(),
+      dexie.collections.toArray(),
+      dexie.dailyStats.toArray(),
     ])
 
-    if (words.length) {
-      await supabase.from('words').upsert(
-        words.map(w => wordToCloud(w, userId)),
-        { onConflict: 'id' }
-      )
-    }
-    if (collections.length) {
-      await supabase.from('collections').upsert(
-        collections.map(c => collectionToCloud(c, userId)),
-        { onConflict: 'id' }
-      )
-    }
-    if (stats.length) {
-      await supabase.from('daily_stats').upsert(
-        stats.map(s => statsToCloud(s, userId)),
-        { onConflict: 'date,user_id' }
-      )
-    }
+    // Use batched writes (max 500 per batch)
+    const batch = writeBatch(firestore)
+
+    words.forEach(w => batch.set(wordDoc(userId, w.id), clean(w)))
+    cols.forEach(c => batch.set(colDoc(userId, c.id), clean(c)))
+    stats.forEach(s => batch.set(statDoc(userId, s.date), clean(s)))
+
+    await batch.commit()
   } catch (err) {
     console.warn('[sync] push failed:', err)
   }
 }
 
-// ── Sync single word ──────────────────────────────────────────────────────────
+// ── Sync helpers (called after every local write) ────────────────────────────
 export async function syncWord(userId: string, wordId: string): Promise<void> {
   try {
-    const word = await db.words.get(wordId)
+    const word = await dexie.words.get(wordId)
     if (!word) return
-    await supabase.from('words').upsert(wordToCloud(word, userId), { onConflict: 'id' })
+    await setDoc(wordDoc(userId, wordId), clean(word))
   } catch (err) {
-    console.warn('[sync] word sync failed:', err)
+    console.warn('[sync] word upsert failed:', err)
   }
 }
 
-// ── Sync delete word ──────────────────────────────────────────────────────────
 export async function deleteCloudWord(userId: string, wordId: string): Promise<void> {
   try {
-    await supabase.from('words').delete().eq('id', wordId).eq('user_id', userId)
+    await deleteDoc(wordDoc(userId, wordId))
   } catch (err) {
     console.warn('[sync] word delete failed:', err)
   }
 }
 
-// ── Sync single collection ────────────────────────────────────────────────────
-export async function syncCollection(userId: string, collectionId: string): Promise<void> {
+export async function syncCollection(userId: string, colId: string): Promise<void> {
   try {
-    const col = await db.collections.get(collectionId)
+    const col = await dexie.collections.get(colId)
     if (!col) return
-    await supabase.from('collections').upsert(collectionToCloud(col, userId), { onConflict: 'id' })
+    await setDoc(colDoc(userId, colId), clean(col))
   } catch (err) {
-    console.warn('[sync] collection sync failed:', err)
+    console.warn('[sync] collection upsert failed:', err)
   }
 }
 
-// ── Sync daily stats ──────────────────────────────────────────────────────────
 export async function syncStats(userId: string, date: string): Promise<void> {
   try {
-    const stat = await db.dailyStats.get(date)
+    const stat = await dexie.dailyStats.get(date)
     if (!stat) return
-    await supabase.from('daily_stats').upsert(statsToCloud(stat, userId), { onConflict: 'date,user_id' })
+    await setDoc(statDoc(userId, date), clean(stat))
   } catch (err) {
-    console.warn('[sync] stats sync failed:', err)
+    console.warn('[sync] stats upsert failed:', err)
   }
 }
