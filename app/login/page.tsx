@@ -90,14 +90,38 @@ export default function LoginPage() {
           transition={{ duration: 0.4 }}
           className="flex flex-col items-center gap-3 text-center"
         >
+          {/* Brand mark */}
           <motion.div
-            animate={{ y: [0, -7, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="text-6xl"
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            🌱
+            <div
+              style={{
+                width: 96, height: 96, borderRadius: 24,
+                background: 'linear-gradient(150deg, #0c0c14 0%, #130d22 60%, #0c0c14 100%)',
+                border: '1px solid rgba(129,140,248,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column', gap: 6,
+                boxShadow: '0 0 28px rgba(129,140,248,0.2), 0 0 60px rgba(129,140,248,0.08)',
+              }}
+            >
+              <svg width="56" height="44" viewBox="0 0 310 240" fill="none">
+                <defs>
+                  <linearGradient id="wlogin" x1="0" y1="0" x2="310" y2="0" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%"   stopColor="#818cf8" />
+                    <stop offset="48%"  stopColor="#a78bfa" />
+                    <stop offset="100%" stopColor="#e879f9" />
+                  </linearGradient>
+                </defs>
+                <polygon
+                  points="0,0 52,0 155,196 258,0 310,0 248,240 196,240 155,88 114,240 62,240"
+                  fill="url(#wlogin)"
+                />
+              </svg>
+              <div style={{ width: 24, height: 3, borderRadius: 2, background: 'linear-gradient(90deg, #818cf8, #e879f9)', opacity: 0.8 }} />
+            </div>
           </motion.div>
-          <h1 className="text-4xl font-black text-gradient">Wordseed</h1>
+          <h1 className="text-4xl font-black text-gradient">Worduous</h1>
           <p className="text-[var(--color-text-muted)] text-base leading-relaxed max-w-xs">
             Build a vocabulary that actually sticks.
           </p>

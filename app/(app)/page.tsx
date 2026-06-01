@@ -107,7 +107,7 @@ export default function HomePage() {
         className="flex items-center justify-between px-4 pt-6 mb-5"
       >
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-black text-gradient leading-none">Wordseed</h1>
+          <h1 className="text-2xl font-black text-gradient leading-none">Worduous</h1>
           {(streak ?? 0) > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.7 }}
