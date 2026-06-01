@@ -1,5 +1,10 @@
+import { Suspense } from 'react'
 import { AddWordForm } from './AddWordForm'
 
 export default function AddWordPage() {
-  return <AddWordForm />
+  return (
+    <Suspense>
+      <AddWordForm />
+    </Suspense>
+  )
 }

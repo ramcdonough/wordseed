@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useTransition, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef, useTransition, useCallback, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Search, Volume2, Bookmark, RefreshCw, X, Sparkles } from 'lucide-react'
 import Link from 'next/link'
@@ -15,14 +15,24 @@ type Stage = 'input' | 'loading' | 'preview' | 'saved'
 
 export function AddWordForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { addToast } = useUIStore()
-  const [word, setWord] = useState('')
+  const prefill = searchParams.get('word') ?? ''
+  const [word, setWord] = useState(prefill)
   const [stage, setStage] = useState<Stage>('input')
   const [result, setResult] = useState<WordLookupResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  // Auto-trigger lookup when arriving from a suggestion link
+  useEffect(() => {
+    if (prefill.trim()) {
+      handleSearch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSearch = useCallback(() => {
     const trimmed = word.trim()

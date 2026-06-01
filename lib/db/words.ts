@@ -1,53 +1,60 @@
 import { nanoid } from 'nanoid'
 import { db } from './schema'
 import type { Word } from '@/types'
-import { calculateMastery } from '@/lib/srs/sm2'
 import { todayKey } from '@/lib/utils/date'
+import { syncWord, deleteCloudWord, syncStats } from '@/lib/sync/service'
+import { useAuthStore } from '@/stores/auth'
 
-const DEFAULT_WORD: Omit<Word, 'id' | 'word' | 'definition' | 'partOfSpeech' | 'exampleSentence' | 'pronunciation'> = {
-  audioUrl: '',
-  synonyms: [],
-  antonyms: [],
-  collections: [],
-  notes: '',
-  isArchived: false,
-  dateAdded: 0,
-  lastReviewed: null,
-  nextReviewDate: null,
-  interval: 0,
-  easeFactor: 2.5,
-  repetitions: 0,
-  timesSeen: 0,
-  timesCorrect: 0,
-  timesIncorrect: 0,
-  masteryScore: 0,
+// Helper: get current user id (may be null if not signed in)
+function userId() {
+  return useAuthStore.getState().user?.id ?? null
 }
 
-export async function createWord(data: Omit<Word, 'id' | 'dateAdded' | 'interval' | 'easeFactor' | 'repetitions' | 'timesSeen' | 'timesCorrect' | 'timesIncorrect' | 'masteryScore' | 'lastReviewed' | 'nextReviewDate'>): Promise<Word> {
+export async function createWord(
+  data: Omit<Word, 'id' | 'dateAdded' | 'interval' | 'easeFactor' | 'repetitions' | 'timesSeen' | 'timesCorrect' | 'timesIncorrect' | 'masteryScore' | 'lastReviewed' | 'nextReviewDate'>
+): Promise<Word> {
   const word: Word = {
-    ...DEFAULT_WORD,
     ...data,
     id: nanoid(),
     dateAdded: Date.now(),
+    lastReviewed: null,
+    nextReviewDate: null,
+    interval: 0,
+    easeFactor: 2.5,
+    repetitions: 0,
+    timesSeen: 0,
+    timesCorrect: 0,
+    timesIncorrect: 0,
+    masteryScore: 0,
   }
   await db.words.add(word)
+  const uid = userId()
+  if (uid) syncWord(uid, word.id)
   return word
 }
 
 export async function updateWord(id: string, updates: Partial<Word>): Promise<void> {
   await db.words.update(id, updates)
+  const uid = userId()
+  if (uid) syncWord(uid, id)
 }
 
 export async function deleteWord(id: string): Promise<void> {
   await db.words.delete(id)
+  const uid = userId()
+  if (uid) deleteCloudWord(uid, id)
 }
 
 export async function archiveWord(id: string): Promise<void> {
   await db.words.update(id, { isArchived: true })
+  const uid = userId()
+  if (uid) syncWord(uid, id)
 }
 
 export async function restoreWord(id: string): Promise<void> {
   await db.words.update(id, { isArchived: false })
+  const uid = userId()
+  if (uid) syncWord(uid, id)
 }
 
 export async function getWord(id: string): Promise<Word | undefined> {
@@ -85,36 +92,30 @@ export async function getWordsForQuiz(
   if (collectionId) {
     query = query.filter((w) => w.collections.includes(collectionId))
   }
-
   if (dueOnly) {
     query = query.filter((w) => !w.nextReviewDate || w.nextReviewDate <= now)
   }
 
   const all = await query.toArray()
-
-  // Prioritize due words, then shuffle the rest
   const due = all.filter((w) => !w.nextReviewDate || w.nextReviewDate <= now)
   const notDue = all.filter((w) => w.nextReviewDate && w.nextReviewDate > now)
-
-  const shuffled = [...due.sort(() => Math.random() - 0.5), ...notDue.sort(() => Math.random() - 0.5)]
-  return shuffled.slice(0, limit)
-}
-
-export async function incrementWordSeen(id: string): Promise<void> {
-  const word = await db.words.get(id)
-  if (!word) return
-  await db.words.update(id, { timesSeen: word.timesSeen + 1 })
+  return [...due.sort(() => Math.random() - 0.5), ...notDue.sort(() => Math.random() - 0.5)].slice(0, limit)
 }
 
 export async function recordReview(id: string, updates: Partial<Word>): Promise<void> {
   await db.words.update(id, updates)
-  await updateDailyStats(updates.timesCorrect !== undefined)
+  const uid = userId()
+  if (uid) {
+    syncWord(uid, id)
+    const date = todayKey()
+    await updateDailyStats(typeof updates.timesCorrect !== 'undefined')
+    syncStats(uid, date)
+  }
 }
 
 async function updateDailyStats(wasCorrect: boolean): Promise<void> {
   const date = todayKey()
   const existing = await db.dailyStats.get(date)
-
   if (existing) {
     await db.dailyStats.update(date, {
       wordsReviewed: existing.wordsReviewed + 1,
