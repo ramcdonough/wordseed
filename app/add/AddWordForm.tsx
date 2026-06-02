@@ -11,7 +11,7 @@ import { createWord } from '@/lib/db/words'
 import type { WordLookupResult } from '@/lib/dictionary/client'
 import { useUIStore } from '@/stores/ui'
 
-type Stage = 'input' | 'loading' | 'preview' | 'saved'
+type Stage = 'input' | 'loading' | 'preview' | 'saved' | 'manual'
 
 async function fetchSuggestions(partial: string): Promise<string[]> {
   try {
@@ -56,6 +56,10 @@ export function AddWordForm() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [didYouMean, setDidYouMean] = useState<string[]>([])
   const [activeSuggestion, setActiveSuggestion] = useState(-1)
+
+  const [manualPartOfSpeech, setManualPartOfSpeech] = useState('noun')
+  const [manualDefinition, setManualDefinition] = useState('')
+  const [manualExample, setManualExample] = useState('')
 
   const inputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -164,9 +168,31 @@ export function AddWordForm() {
     }
   }
 
+  const handleManualSave = useCallback(async () => {
+    if (!manualDefinition.trim()) return
+    await createWord({
+      word: word.trim(),
+      definition: manualDefinition.trim(),
+      partOfSpeech: manualPartOfSpeech,
+      exampleSentence: manualExample.trim(),
+      pronunciation: '',
+      audioUrl: '',
+      synonyms: [],
+      antonyms: [],
+      collections: [],
+      notes: '',
+      isArchived: false,
+    })
+    setStage('saved')
+    setResult({ word: word.trim(), definition: manualDefinition.trim(), partOfSpeech: manualPartOfSpeech, exampleSentence: manualExample.trim(), pronunciation: '', audioUrl: '', synonyms: [], antonyms: [] })
+    addToast(`"${word.trim()}" added to your collection`, 'success')
+    setTimeout(() => router.push('/'), 1400)
+  }, [word, manualDefinition, manualPartOfSpeech, manualExample, router, addToast])
+
   const handleReset = () => {
     setWord(''); setResult(null); setStage('input'); setError(null)
     setDidYouMean([]); setSuggestions([]); setShowSuggestions(false)
+    setManualDefinition(''); setManualExample(''); setManualPartOfSpeech('noun')
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
@@ -183,10 +209,10 @@ export function AddWordForm() {
       <div className="flex-1 flex flex-col px-4 pt-6 pb-8 max-w-lg mx-auto w-full">
         <AnimatePresence mode="wait">
 
-          {/* ─ Auto-fetch loading (from discover) ─ */}
-          {stage === 'loading' && isAutoFetch && (
+          {/* ─ Loading ─ */}
+          {stage === 'loading' && (
             <motion.div
-              key="autofetch"
+              key="loading"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -197,7 +223,7 @@ export function AddWordForm() {
           )}
 
           {/* ─ Input stage ─ */}
-          {(stage === 'input' || (stage === 'loading' && !isAutoFetch)) && (
+          {stage === 'input' && (
             <motion.div
               key="input"
               initial={{ opacity: 0, y: 20 }}
@@ -260,7 +286,7 @@ export function AddWordForm() {
                         {suggestions.map((s, i) => (
                           <button
                             key={s}
-                            onMouseDown={() => pickSuggestion(s)}
+                            onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s) }}
                             className={`w-full text-left px-5 py-3 flex items-center gap-3 transition-colors ${
                               i === activeSuggestion
                                 ? 'bg-[var(--color-primary-subtle)] text-[var(--color-primary)]'
@@ -276,15 +302,23 @@ export function AddWordForm() {
                   </AnimatePresence>
                 </div>
 
-                {/* Error */}
+                {/* Error + manual entry offer */}
                 {error && (
-                  <motion.p
+                  <motion.div
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-sm text-[var(--color-error)] px-1"
+                    className="flex flex-col gap-2"
                   >
-                    {error}
-                  </motion.p>
+                    <p className="text-sm text-[var(--color-error)] px-1">{error}</p>
+                    {word.trim() && (
+                      <button
+                        onClick={() => setStage('manual')}
+                        className="text-sm text-left px-1 text-[var(--color-primary)] underline underline-offset-2 hover:opacity-80 transition-opacity"
+                      >
+                        Add &ldquo;{word.trim()}&rdquo; with your own definition →
+                      </button>
+                    )}
+                  </motion.div>
                 )}
 
                 {/* Did you mean */}
@@ -316,10 +350,8 @@ export function AddWordForm() {
                   )}
                 </AnimatePresence>
 
-                <Button onClick={handleSearch} disabled={!word.trim()} loading={stage === 'loading'} size="xl" fullWidth>
-                  {stage === 'loading' ? 'Looking up…' : (
-                    <><Search className="w-4 h-4" />Look Up Word</>
-                  )}
+                <Button onClick={handleSearch} disabled={!word.trim()} size="xl" fullWidth>
+                  <Search className="w-4 h-4" />Look Up Word
                 </Button>
               </div>
 
@@ -458,6 +490,88 @@ export function AddWordForm() {
                   Try Different Word
                 </Button>
               </motion.div>
+            </motion.div>
+          )}
+
+          {/* ─ Manual entry stage ─ */}
+          {stage === 'manual' && (
+            <motion.div
+              key="manual"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
+              className="flex flex-col gap-6"
+            >
+              <div>
+                <h2 className="text-3xl font-black text-[var(--color-text)] leading-tight mb-1">
+                  Define <span className="text-gradient capitalize">{word.trim()}</span>
+                </h2>
+                <p className="text-[var(--color-text-muted)] text-sm">
+                  No dictionary entry found — add your own definition.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                {/* Part of speech */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-text-faint)]">
+                    Part of speech
+                  </label>
+                  <select
+                    value={manualPartOfSpeech}
+                    onChange={(e) => setManualPartOfSpeech(e.target.value)}
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3 text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all duration-200"
+                  >
+                    {['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition', 'conjunction', 'interjection', 'other'].map((pos) => (
+                      <option key={pos} value={pos}>{pos}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Definition */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-text-faint)]">
+                    Definition <span className="text-[var(--color-error)]">*</span>
+                  </label>
+                  <textarea
+                    value={manualDefinition}
+                    onChange={(e) => setManualDefinition(e.target.value)}
+                    placeholder="What does it mean?"
+                    rows={3}
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3 text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all duration-200 resize-none"
+                  />
+                </div>
+
+                {/* Example */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-text-faint)]">
+                    Example sentence <span className="text-[var(--color-text-faint)]">(optional)</span>
+                  </label>
+                  <input
+                    value={manualExample}
+                    onChange={(e) => setManualExample(e.target.value)}
+                    placeholder="Use it in a sentence…"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3 text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleManualSave}
+                  disabled={!manualDefinition.trim()}
+                  size="xl"
+                  fullWidth
+                  className="glow-primary"
+                >
+                  <Bookmark className="w-4 h-4" />
+                  Save Word
+                </Button>
+                <Button onClick={handleReset} variant="ghost" size="lg" fullWidth>
+                  Start Over
+                </Button>
+              </div>
             </motion.div>
           )}
 
