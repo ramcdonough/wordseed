@@ -493,7 +493,7 @@ function ResultsScreen({
                   <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-error)]/20 rounded-2xl hover:bg-[var(--color-surface-2)] transition-colors group">
                     <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                       <span className="font-semibold text-[var(--color-text)] capitalize">{r.word}</span>
-                      <span className="text-xs text-[var(--color-text-faint)] truncate">{r.correctAnswer}</span>
+                      <span className="text-xs text-[var(--color-text-faint)]">{r.correctAnswer}</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-[var(--color-text-faint)] shrink-0 group-hover:text-[var(--color-text-muted)] transition-colors" />
                   </div>

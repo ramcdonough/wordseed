@@ -125,6 +125,20 @@ const SEEDS: Record<DiscoverCategory, QuerySpec[]> = {
     ['ml',     'fecund'],
     ['rel_trg','mountain'],
   ],
+  legal: [
+    ['ml',     'jurisprudence'],
+    ['topics', 'law court justice'],
+    ['ml',     'litigation'],
+    ['rel_trg','trial'],
+    ['ml',     'culpable'],
+    ['topics', 'legal statute rights'],
+    ['ml',     'indictment'],
+    ['rel_trg','lawyer'],
+    ['ml',     'acquittal'],
+    ['topics', 'criminal civil procedure'],
+    ['ml',     'malfeasance'],
+    ['rel_trg','verdict'],
+  ],
 }
 
 export async function fetchRemoteWords(

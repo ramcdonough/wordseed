@@ -7,6 +7,7 @@ export type DiscoverCategory =
   | 'psychology'
   | 'arts'
   | 'nature'
+  | 'legal'
 
 export interface DiscoverWord {
   word: string
@@ -18,6 +19,7 @@ export interface DiscoverWord {
 export const CATEGORY_LABELS: Record<DiscoverCategory, string> = {
   all: 'All',
   politics: '🏛 Politics',
+  legal: '⚖️ Legal',
   philosophy: '🧠 Philosophy',
   science: '🔬 Science',
   literature: '📚 Literature',
@@ -218,4 +220,31 @@ export const DISCOVER_WORDS: DiscoverWord[] = [
   { word: 'boreal',         pos: 'adjective', snippet: 'Relating to the north; of the northern forest zone.',           category: 'nature' },
   { word: 'salient',        pos: 'adjective', snippet: 'Most noticeable or important; projecting outward.',              category: 'nature' },
   { word: 'lambent',        pos: 'adjective', snippet: 'Softly bright; glowing; playing lightly over a surface.',       category: 'nature' },
+
+  // ── Legal ─────────────────────────────────────────────────────────────
+  { word: 'tort',           pos: 'noun',      snippet: 'A wrongful act giving rise to a civil legal claim for damages.',  category: 'legal' },
+  { word: 'habeas corpus',  pos: 'noun',      snippet: 'A writ requiring a person to be brought before a court; protection against unlawful detention.', category: 'legal' },
+  { word: 'jurisprudence',  pos: 'noun',      snippet: 'The theory or philosophy of law; a body of law.',                category: 'legal' },
+  { word: 'subpoena',       pos: 'noun',      snippet: 'A writ ordering a person to attend court or produce documents.',  category: 'legal' },
+  { word: 'injunction',     pos: 'noun',      snippet: 'A court order requiring a party to do or refrain from an action.', category: 'legal' },
+  { word: 'perjury',        pos: 'noun',      snippet: 'The offence of wilfully telling an untruth under oath.',          category: 'legal' },
+  { word: 'indictment',     pos: 'noun',      snippet: 'A formal charge or accusation of a serious crime.',              category: 'legal' },
+  { word: 'acquittal',      pos: 'noun',      snippet: 'A judgement that a person is not guilty of a criminal charge.',  category: 'legal' },
+  { word: 'litigation',     pos: 'noun',      snippet: 'The process of taking legal action; a lawsuit.',                 category: 'legal' },
+  { word: 'precedent',      pos: 'noun',      snippet: 'A prior court decision used as a basis for deciding similar cases.', category: 'legal' },
+  { word: 'affidavit',      pos: 'noun',      snippet: 'A written statement confirmed by oath, for use as evidence.',    category: 'legal' },
+  { word: 'estoppel',       pos: 'noun',      snippet: 'A legal bar preventing someone contradicting a prior position.',  category: 'legal' },
+  { word: 'malfeasance',    pos: 'noun',      snippet: 'Wrongdoing or misconduct, especially by a public official.',     category: 'legal' },
+  { word: 'culpable',       pos: 'adjective', snippet: 'Deserving blame or censure; responsible for a fault or wrong.',  category: 'legal' },
+  { word: 'indemnify',      pos: 'verb',      snippet: 'To compensate for harm or loss; to secure against legal liability.', category: 'legal' },
+  { word: 'plaintiff',      pos: 'noun',      snippet: 'The party who brings a case against another in a court of law.', category: 'legal' },
+  { word: 'defendant',      pos: 'noun',      snippet: 'The party accused or sued in a court of law.',                   category: 'legal' },
+  { word: 'deposition',     pos: 'noun',      snippet: 'Sworn out-of-court testimony recorded for use in legal proceedings.', category: 'legal' },
+  { word: 'statute',        pos: 'noun',      snippet: 'A written law passed by a legislative body.',                    category: 'legal' },
+  { word: 'caveat',         pos: 'noun',      snippet: 'A warning or proviso; a legal notice to suspend proceedings.',   category: 'legal' },
+  { word: 'abetment',       pos: 'noun',      snippet: 'The act of encouraging or assisting someone to commit a crime.',  category: 'legal' },
+  { word: 'recidivism',     pos: 'noun',      snippet: 'The tendency to relapse into criminal behaviour after conviction.', category: 'legal' },
+  { word: 'exculpate',      pos: 'verb',      snippet: 'To absolve someone from blame or fault; to clear of a charge.',  category: 'legal' },
+  { word: 'restitution',    pos: 'noun',      snippet: 'Restoration of something lost or stolen; compensation for harm.',  category: 'legal' },
+  { word: 'amicus curiae',  pos: 'noun',      snippet: 'A friend of the court; an advisor not party to a case.',          category: 'legal' },
 ]

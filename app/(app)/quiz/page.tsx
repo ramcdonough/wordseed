@@ -47,14 +47,15 @@ function QuizConfigContent() {
   const available = dueMode ? (dueWords?.length ?? 0) : (wordCount?.active ?? 0)
   const canStart = available >= 4
 
-  const handleStart = async () => {
+  const handleStart = async (overrides?: Partial<QuizConfig>) => {
     setLoading(true)
+    const effective = { ...config, ...overrides }
     try {
       const words = await getWordsForQuiz(
-        config.collectionId,
-        config.includeArchived,
-        config.wordCount,
-        config.dueOnly
+        effective.collectionId,
+        effective.includeArchived,
+        effective.wordCount,
+        effective.dueOnly
       )
 
       if (words.length < 4) {
@@ -106,11 +107,8 @@ function QuizConfigContent() {
               </div>
             </div>
             <Button
-              onClick={() => {
-                setConfig((c) => ({ ...c, dueOnly: true }))
-                setTimeout(handleStart, 0)
-              }}
-              disabled={!canStart || (dueWords?.length ?? 0) < 4}
+              onClick={() => handleStart({ dueOnly: true })}
+              disabled={(dueWords?.length ?? 0) < 4}
               loading={loading}
               size="lg"
               fullWidth
@@ -224,10 +222,7 @@ function QuizConfigContent() {
         </label>
 
         <Button
-          onClick={() => {
-            setConfig((c) => ({ ...c, dueOnly: false }))
-            handleStart()
-          }}
+          onClick={() => handleStart({ dueOnly: false })}
           disabled={!canStart}
           loading={loading}
           size="xl"

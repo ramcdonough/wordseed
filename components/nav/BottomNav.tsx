@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BookOpen, Zap, BarChart2, Compass } from 'lucide-react'
+import { Home, BookOpen, Target, User, Compass } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils/cn'
 
@@ -10,8 +10,8 @@ const NAV_ITEMS = [
   { href: '/', label: 'Home', Icon: Home },
   { href: '/words', label: 'Words', Icon: BookOpen },
   { href: '/discover', label: 'Discover', Icon: Compass },
-  { href: '/quiz', label: 'Quiz', Icon: Zap },
-  { href: '/stats', label: 'Stats', Icon: BarChart2 },
+  { href: '/train', label: 'Train', Icon: Target },
+  { href: '/stats', label: 'Profile', Icon: User },
 ]
 
 export function BottomNav() {
