@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { Word, Collection, QuizSession, DailyStats } from '@/types'
 
-export class WorduousDB extends Dexie {
+export class WordseedDB extends Dexie {
   words!: Table<Word>
   collections!: Table<Collection>
   quizSessions!: Table<QuizSession>
@@ -19,4 +19,4 @@ export class WorduousDB extends Dexie {
   }
 }
 
-export const db = new WorduousDB()
+export const db = new WordseedDB()

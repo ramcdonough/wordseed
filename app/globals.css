@@ -74,7 +74,7 @@ input::placeholder, textarea::placeholder { color: var(--color-text-faint); }
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #a5b4fc, #e879f9);
+  background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 55%, #34d399 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

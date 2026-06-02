@@ -6,13 +6,13 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Worduous — Vocabulary That Sticks',
+  title: 'Wordseed — Vocabulary That Sticks',
   description: 'Build a vocabulary that lasts with spaced repetition and active recall.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Worduous',
+    title: 'Wordseed',
   },
 }
 

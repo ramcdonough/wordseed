@@ -97,31 +97,41 @@ export default function LoginPage() {
           >
             <div
               style={{
-                width: 96, height: 96, borderRadius: 24,
-                background: 'linear-gradient(150deg, #0c0c14 0%, #130d22 60%, #0c0c14 100%)',
-                border: '1px solid rgba(129,140,248,0.2)',
+                width: 100, height: 100, borderRadius: 26,
+                background: 'linear-gradient(150deg, #0b0c10 0%, #0c1210 55%, #0b0c10 100%)',
+                border: '1px solid rgba(129,140,248,0.18)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexDirection: 'column', gap: 6,
-                boxShadow: '0 0 28px rgba(129,140,248,0.2), 0 0 60px rgba(129,140,248,0.08)',
+                boxShadow: '0 0 32px rgba(129,140,248,0.18), 0 0 70px rgba(52,211,153,0.08)',
+                overflow: 'hidden',
+                position: 'relative',
               }}
             >
-              <svg width="56" height="44" viewBox="0 0 310 240" fill="none">
+              {/* Sprouting-W mark — same as app icon */}
+              <svg width="70" height="72" viewBox="-10 -80 330 320" fill="none">
                 <defs>
                   <linearGradient id="wlogin" x1="0" y1="0" x2="310" y2="0" gradientUnits="userSpaceOnUse">
                     <stop offset="0%"   stopColor="#818cf8" />
-                    <stop offset="48%"  stopColor="#a78bfa" />
+                    <stop offset="45%"  stopColor="#a78bfa" />
                     <stop offset="100%" stopColor="#e879f9" />
                   </linearGradient>
+                  <filter id="splogin" x="-80%" y="-80%" width="260%" height="260%">
+                    <feGaussianBlur stdDeviation="5" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
                 </defs>
                 <polygon
                   points="0,0 52,0 155,196 258,0 310,0 248,240 196,240 155,88 114,240 62,240"
                   fill="url(#wlogin)"
                 />
+                <g filter="url(#splogin)">
+                  <line x1="155" y1="-4" x2="155" y2="-54" stroke="#34d399" strokeWidth="11" strokeLinecap="round" />
+                  <path d="M 155 -34 Q 118 -70 95 -58" stroke="#34d399" strokeWidth="10" fill="none" strokeLinecap="round" />
+                  <path d="M 155 -34 Q 192 -70 215 -58" stroke="#34d399" strokeWidth="10" fill="none" strokeLinecap="round" />
+                </g>
               </svg>
-              <div style={{ width: 24, height: 3, borderRadius: 2, background: 'linear-gradient(90deg, #818cf8, #e879f9)', opacity: 0.8 }} />
             </div>
           </motion.div>
-          <h1 className="text-4xl font-black text-gradient">Worduous</h1>
+          <h1 className="text-4xl font-black text-gradient">Wordseed</h1>
           <p className="text-[var(--color-text-muted)] text-base leading-relaxed max-w-xs">
             Build a vocabulary that actually sticks.
           </p>
