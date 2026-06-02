@@ -20,11 +20,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 select-none',
           'active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100',
           // Variants
-          variant === 'primary' && 'bg-[var(--color-primary)] text-[#0f0f14] hover:bg-indigo-400 rounded-xl',
+          variant === 'primary' && 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:opacity-90 rounded-xl',
           variant === 'secondary' && 'bg-[var(--color-surface-2)] text-[var(--color-text)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border)] rounded-xl',
           variant === 'ghost' && 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] rounded-xl',
-          variant === 'danger' && 'bg-[var(--color-error-subtle)] text-[var(--color-error)] hover:bg-red-950 border border-red-900/30 rounded-xl',
-          variant === 'success' && 'bg-[var(--color-success-subtle)] text-[var(--color-success)] hover:bg-emerald-950 border border-emerald-900/30 rounded-xl',
+          variant === 'danger' && 'bg-[var(--color-error-subtle)] text-[var(--color-error)] hover:opacity-80 border border-[var(--color-error)]/20 rounded-xl',
+          variant === 'success' && 'bg-[var(--color-success-subtle)] text-[var(--color-success)] hover:opacity-80 border border-[var(--color-success)]/20 rounded-xl',
           // Sizes
           size === 'sm' && 'text-xs px-3 py-1.5 h-7',
           size === 'md' && 'text-sm px-4 py-2 h-9',

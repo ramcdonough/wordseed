@@ -3,18 +3,13 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, SlidersHorizontal, X, ChevronRight } from 'lucide-react'
+import { Search, Plus, SlidersHorizontal, X } from 'lucide-react'
 import { useWords, useWordCount } from '@/hooks/useWords'
 import { useCollections } from '@/hooks/useCollections'
-import { Badge } from '@/components/ui/Badge'
-import { getMasteryLabel } from '@/lib/srs/sm2'
+import { WordCard } from '@/components/words/WordCard'
 import type { Word } from '@/types'
 
 type SortKey = 'newest' | 'oldest' | 'alpha' | 'mastery'
-
-const MASTERY_VARIANT: Record<string, 'new' | 'familiar' | 'learning' | 'strong' | 'mastered'> = {
-  New: 'new', Familiar: 'familiar', Learning: 'learning', Strong: 'strong', Mastered: 'mastered',
-}
 
 export default function WordsPage() {
   const [query, setQuery] = useState('')
@@ -79,7 +74,7 @@ export default function WordsPage() {
             </button>
             <Link
               href="/add"
-              className="w-9 h-9 bg-[var(--color-primary)] rounded-xl flex items-center justify-center text-[#0f0f14] hover:bg-indigo-400 active:scale-95 transition-all"
+              className="w-9 h-9 bg-[var(--color-primary)] rounded-xl flex items-center justify-center text-[var(--color-primary-foreground)] hover:opacity-90 active:scale-95 transition-all"
             >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
             </Link>
@@ -191,9 +186,9 @@ export default function WordsPage() {
         {filtered.length === 0 ? (
           <EmptyState query={query} hasWords={words.length > 0} />
         ) : (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2.5">
             {filtered.map((word, i) => (
-              <WordRow key={word.id} word={word} index={i} />
+              <WordCard key={word.id} word={word} index={i} />
             ))}
           </div>
         )}
@@ -202,34 +197,6 @@ export default function WordsPage() {
   )
 }
 
-function WordRow({ word, index }: { word: Word; index: number }) {
-  const label = getMasteryLabel(word.masteryScore)
-  const variant = MASTERY_VARIANT[label] ?? 'new'
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.25 }}
-    >
-      <Link href={`/words/${word.id}`}>
-        <div className={`flex items-center justify-between gap-3 px-4 py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl hover:border-[var(--color-surface-3)] hover:bg-[var(--color-surface-2)] active:scale-[0.99] transition-all duration-150 ${word.isArchived ? 'opacity-60' : ''}`}>
-          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[var(--color-text)] capitalize">{word.word}</span>
-              {word.isArchived && <span className="text-[10px] text-[var(--color-text-faint)]">archived</span>}
-            </div>
-            <span className="text-xs text-[var(--color-text-faint)] truncate">{word.definition}</span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant={variant}>{label}</Badge>
-            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-faint)]" />
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  )
-}
 
 function EmptyState({ query, hasWords }: { query: string; hasWords: boolean }) {
   return (

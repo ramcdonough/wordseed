@@ -10,7 +10,7 @@ interface CardProps {
 
 export function Card({ children, className, onClick, interactive, padding = 'md' }: CardProps) {
   const base = cn(
-    'bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl',
+    'bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-paper paper-texture',
     interactive && 'cursor-pointer hover:border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-2)] active:scale-[0.99] transition-all duration-150',
     padding === 'sm' && 'p-3',
     padding === 'md' && 'p-4',

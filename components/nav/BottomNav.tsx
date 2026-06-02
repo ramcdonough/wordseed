@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BookOpen, Zap, BarChart2 } from 'lucide-react'
+import { Home, BookOpen, Zap, BarChart2, Compass } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils/cn'
 
 const NAV_ITEMS = [
   { href: '/', label: 'Home', Icon: Home },
   { href: '/words', label: 'Words', Icon: BookOpen },
+  { href: '/discover', label: 'Discover', Icon: Compass },
   { href: '/quiz', label: 'Quiz', Icon: Zap },
   { href: '/stats', label: 'Stats', Icon: BarChart2 },
 ]
@@ -17,11 +18,11 @@ export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-[var(--color-border)]">
-      <div
-        className="flex items-center justify-around px-2 h-16"
-        style={{ paddingBottom: 'var(--safe-area-bottom)' }}
-      >
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-[var(--color-border)]"
+      style={{ paddingBottom: 'var(--safe-area-bottom)' }}
+    >
+      <div className="flex items-center justify-around px-2 h-16">
         {NAV_ITEMS.map(({ href, label, Icon }) => {
           const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
 
@@ -40,7 +41,7 @@ export function BottomNav() {
                   <motion.div
                     layoutId="nav-glow"
                     className="absolute inset-0 rounded-xl"
-                    style={{ background: 'rgba(129,140,248,0.12)' }}
+                    style={{ background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}

@@ -3,7 +3,7 @@
 import { useState, useRef, useTransition, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Search, Volume2, Bookmark, RefreshCw, X, Sparkles } from 'lucide-react'
+import { ArrowLeft, Search, Volume2, Bookmark, RefreshCw, X, Sparkles, CornerDownRight } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { fetchWordDefinition } from './actions'
@@ -13,40 +13,135 @@ import { useUIStore } from '@/stores/ui'
 
 type Stage = 'input' | 'loading' | 'preview' | 'saved'
 
+async function fetchSuggestions(partial: string): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://api.datamuse.com/sug?s=${encodeURIComponent(partial)}&max=6`,
+      { signal: AbortSignal.timeout(2000) }
+    )
+    const data: { word: string }[] = await res.json()
+    return data.map((d) => d.word)
+  } catch {
+    return []
+  }
+}
+
+async function fetchDidYouMean(word: string): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&max=4`,
+      { signal: AbortSignal.timeout(2000) }
+    )
+    const data: { word: string }[] = await res.json()
+    return data.map((d) => d.word).filter((w) => w.toLowerCase() !== word.toLowerCase())
+  } catch {
+    return []
+  }
+}
+
 export function AddWordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { addToast } = useUIStore()
   const prefill = searchParams.get('word') ?? ''
+
   const [word, setWord] = useState(prefill)
   const [stage, setStage] = useState<Stage>('input')
   const [result, setResult] = useState<WordLookupResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [didYouMean, setDidYouMean] = useState<string[]>([])
+  const [activeSuggestion, setActiveSuggestion] = useState(-1)
+
   const inputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
 
   // Auto-trigger lookup when arriving from a suggestion link
   useEffect(() => {
-    if (prefill.trim()) {
-      handleSearch()
-    }
+    if (prefill.trim()) handleSearch()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Debounced autocomplete
+  useEffect(() => {
+    if (word.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
+    const timer = setTimeout(async () => {
+      const results = await fetchSuggestions(word)
+      setSuggestions(results)
+      setShowSuggestions(results.length > 0)
+      setActiveSuggestion(-1)
+    }, 280)
+    return () => clearTimeout(timer)
+  }, [word])
+
+  const pickSuggestion = useCallback((picked: string) => {
+    setWord(picked)
+    setSuggestions([])
+    setShowSuggestions(false)
+    setDidYouMean([])
+    setError(null)
+    // Trigger search immediately
+    setStage('loading')
+    startTransition(async () => {
+      const data = await fetchWordDefinition(picked)
+      if (data) { setResult(data); setStage('preview') }
+      else {
+        const alts = await fetchDidYouMean(picked)
+        setDidYouMean(alts)
+        setError(`No definition found for "${picked}".`)
+        setStage('input')
+      }
+    })
   }, [])
 
   const handleSearch = useCallback(() => {
     const trimmed = word.trim()
     if (!trimmed) return
     setError(null)
+    setDidYouMean([])
+    setSuggestions([])
+    setShowSuggestions(false)
     setStage('loading')
     startTransition(async () => {
       const data = await fetchWordDefinition(trimmed)
       if (data) { setResult(data); setStage('preview') }
-      else { setError(`No definition found for "${trimmed}". Try another word.`); setStage('input') }
+      else {
+        const alts = await fetchDidYouMean(trimmed)
+        setDidYouMean(alts)
+        setError(`No definition found for "${trimmed}".`)
+        setStage('input')
+      }
     })
   }, [word])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showSuggestions && suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setActiveSuggestion((i) => Math.min(i + 1, suggestions.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setActiveSuggestion((i) => Math.max(i - 1, -1))
+        return
+      }
+      if (e.key === 'Enter' && activeSuggestion >= 0) {
+        e.preventDefault()
+        pickSuggestion(suggestions[activeSuggestion])
+        return
+      }
+      if (e.key === 'Escape') {
+        setShowSuggestions(false)
+        return
+      }
+    }
+    if (e.key === 'Enter') handleSearch()
+  }
 
   const handleSave = useCallback(async () => {
     if (!result) return
@@ -70,6 +165,7 @@ export function AddWordForm() {
 
   const handleReset = () => {
     setWord(''); setResult(null); setStage('input'); setError(null)
+    setDidYouMean([]); setSuggestions([]); setShowSuggestions(false)
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
@@ -107,30 +203,66 @@ export function AddWordForm() {
               </div>
 
               <div className="flex flex-col gap-3">
+                {/* Input + autocomplete dropdown */}
                 <div className="relative">
                   <input
                     ref={inputRef}
                     autoFocus
                     value={word}
-                    onChange={(e) => setWord(e.target.value)}
+                    onChange={(e) => { setWord(e.target.value); setError(null); setDidYouMean([]) }}
                     onKeyDown={handleKeyDown}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                     placeholder="e.g. ubiquitous"
                     className="w-full text-2xl font-semibold bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-5 py-4 text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all duration-200 pr-12"
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
+                    aria-autocomplete="list"
+                    aria-expanded={showSuggestions}
                   />
                   {word && (
                     <motion.button
                       whileTap={{ scale: 0.88 }}
-                      onClick={() => setWord('')}
+                      onClick={() => { setWord(''); setSuggestions([]); setShowSuggestions(false); setDidYouMean([]); setError(null) }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] hover:text-[var(--color-text-muted)]"
                     >
                       <X className="w-5 h-5" />
                     </motion.button>
                   )}
+
+                  {/* Autocomplete dropdown */}
+                  <AnimatePresence>
+                    {showSuggestions && suggestions.length > 0 && (
+                      <motion.div
+                        ref={suggestionsRef}
+                        initial={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                        exit={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        style={{ transformOrigin: 'top' }}
+                        className="absolute top-full left-0 right-0 mt-2 z-50 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-paper paper-texture"
+                      >
+                        {suggestions.map((s, i) => (
+                          <button
+                            key={s}
+                            onMouseDown={() => pickSuggestion(s)}
+                            className={`w-full text-left px-5 py-3 flex items-center gap-3 transition-colors ${
+                              i === activeSuggestion
+                                ? 'bg-[var(--color-primary-subtle)] text-[var(--color-primary)]'
+                                : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)]'
+                            }`}
+                          >
+                            <Search className="w-3.5 h-3.5 shrink-0 text-[var(--color-text-faint)]" />
+                            <span className="text-lg font-medium">{s}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
+                {/* Error */}
                 {error && (
                   <motion.p
                     initial={{ opacity: 0, y: -4 }}
@@ -140,6 +272,35 @@ export function AddWordForm() {
                     {error}
                   </motion.p>
                 )}
+
+                {/* Did you mean */}
+                <AnimatePresence>
+                  {didYouMean.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-start gap-2 px-1"
+                    >
+                      <CornerDownRight className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--color-text-faint)]" />
+                      <p className="text-sm text-[var(--color-text-muted)]">
+                        Did you mean{' '}
+                        {didYouMean.map((w, i) => (
+                          <span key={w}>
+                            <button
+                              onClick={() => pickSuggestion(w)}
+                              className="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:opacity-80 transition-opacity"
+                            >
+                              {w}
+                            </button>
+                            {i < didYouMean.length - 1 && <span className="text-[var(--color-text-faint)]">, </span>}
+                          </span>
+                        ))}
+                        ?
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <Button onClick={handleSearch} disabled={!word.trim()} loading={stage === 'loading'} size="xl" fullWidth>
                   {stage === 'loading' ? 'Looking up…' : (
@@ -259,7 +420,7 @@ export function AddWordForm() {
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: 0.2 + i * 0.04 }}
-                          className="text-xs px-2.5 py-1 rounded-full bg-rose-950/50 border border-rose-500/20 text-rose-400"
+                          className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-error-subtle)] border border-[var(--color-error)]/20 text-[var(--color-error)]"
                         >
                           {a}
                         </motion.span>
@@ -295,16 +456,20 @@ export function AddWordForm() {
               transition={{ duration: 0.4, type: 'spring', stiffness: 280, damping: 18 }}
               className="flex-1 flex flex-col items-center justify-center gap-6 text-center"
             >
-              {/* Pulsing ring + emoji */}
               <div className="relative">
                 <motion.div
                   className="absolute inset-0 rounded-full"
-                  style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.3), transparent 70%)' }}
+                  style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 70%)' }}
                   animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                 />
-                <div className="relative w-24 h-24 rounded-full flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, rgba(129,140,248,0.2), rgba(232,121,249,0.2))', border: '1px solid rgba(129,140,248,0.3)' }}>
+                <div
+                  className="relative w-24 h-24 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 20%, transparent), color-mix(in srgb, var(--color-success) 20%, transparent))',
+                    border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                  }}
+                >
                   <motion.span
                     animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }}
                     transition={{ delay: 0.2, duration: 0.6 }}

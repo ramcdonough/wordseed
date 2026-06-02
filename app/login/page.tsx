@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -74,7 +76,7 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6"
-      style={{ background: 'linear-gradient(160deg, #09090b 0%, #0e0e1a 50%, #09090b 100%)' }}
+      style={{ background: 'linear-gradient(160deg, var(--background) 0%, var(--color-surface) 50%, var(--background) 100%)' }}
     >
       {/* Ambient glow */}
       <div
@@ -98,10 +100,10 @@ export default function LoginPage() {
             <div
               style={{
                 width: 100, height: 100, borderRadius: 26,
-                background: 'linear-gradient(150deg, #0b0c10 0%, #0c1210 55%, #0b0c10 100%)',
-                border: '1px solid rgba(129,140,248,0.18)',
+                background: 'linear-gradient(150deg, var(--color-surface) 0%, var(--color-surface-2) 55%, var(--color-surface) 100%)',
+                border: '1px solid color-mix(in srgb, var(--color-primary) 18%, transparent)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 32px rgba(129,140,248,0.18), 0 0 70px rgba(52,211,153,0.08)',
+                boxShadow: '0 0 32px color-mix(in srgb, var(--color-primary) 18%, transparent), 0 0 70px color-mix(in srgb, var(--color-success) 8%, transparent)',
                 overflow: 'hidden',
                 position: 'relative',
               }}
@@ -173,8 +175,6 @@ export default function LoginPage() {
             </span>
             <span>·</span>
             <span>Works offline</span>
-            <span>·</span>
-            <span>Free forever</span>
           </div>
         </motion.div>
       </div>
