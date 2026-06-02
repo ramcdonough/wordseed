@@ -45,8 +45,9 @@ export function AddWordForm() {
   const { addToast } = useUIStore()
   const prefill = searchParams.get('word') ?? ''
 
+  const isAutoFetch = !!prefill.trim()
   const [word, setWord] = useState(prefill)
-  const [stage, setStage] = useState<Stage>('input')
+  const [stage, setStage] = useState<Stage>(isAutoFetch ? 'loading' : 'input')
   const [result, setResult] = useState<WordLookupResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -182,8 +183,21 @@ export function AddWordForm() {
       <div className="flex-1 flex flex-col px-4 pt-6 pb-8 max-w-lg mx-auto w-full">
         <AnimatePresence mode="wait">
 
+          {/* ─ Auto-fetch loading (from discover) ─ */}
+          {stage === 'loading' && isAutoFetch && (
+            <motion.div
+              key="autofetch"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex items-center justify-center"
+            >
+              <div className="w-8 h-8 rounded-full border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] animate-spin" />
+            </motion.div>
+          )}
+
           {/* ─ Input stage ─ */}
-          {(stage === 'input' || stage === 'loading') && (
+          {(stage === 'input' || (stage === 'loading' && !isAutoFetch)) && (
             <motion.div
               key="input"
               initial={{ opacity: 0, y: 20 }}
