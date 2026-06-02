@@ -33,14 +33,14 @@ export function generateQuestion(
       const options = shuffle([
         word.definition,
         ...distractors.map((d) => d.definition),
-      ]).map((d) => truncate(d))
+      ])
       return {
         id: nanoid(),
         type,
         word,
         prompt: word.word,
         options,
-        correctAnswer: truncate(word.definition),
+        correctAnswer: word.definition,
         hint: `(${word.partOfSpeech})`,
       }
     }

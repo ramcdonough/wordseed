@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Zap, Shuffle, ChevronRight, Lock } from 'lucide-react'
+import { Zap, Shuffle, ChevronRight, Lock, Layers } from 'lucide-react'
 import { useDueWords, useWordCount } from '@/hooks/useWords'
 
 const fadeUp = {
@@ -87,8 +87,33 @@ export default function TrainPage() {
           </Link>
         </motion.div>
 
-        {/* ── Coming soon placeholder ── */}
+        {/* ── Flashcards ── */}
         <motion.div custom={2} initial="hidden" animate="show" variants={fadeUp}>
+          <Link href={totalActive >= 1 ? '/train/flashcards' : '#'}>
+            <div className={`group flex items-center gap-4 p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl paper-texture shadow-paper active:scale-[0.99] transition-all duration-150 ${totalActive >= 1 ? 'hover:border-[var(--color-primary)]/40 cursor-pointer' : 'opacity-60 cursor-default'}`}>
+              <div className="w-12 h-12 rounded-xl bg-[var(--color-warning)]/15 flex items-center justify-center shrink-0">
+                <Layers className="w-6 h-6 text-[var(--color-warning)]" strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-bold text-[var(--color-text)] text-base">Flashcards</span>
+                </div>
+                <p className="text-sm text-[var(--color-text-muted)] leading-snug">
+                  Flip through your words. Tap to reveal, then mark what you know.
+                </p>
+                {totalActive < 1 && (
+                  <p className="text-xs text-[var(--color-text-faint)] mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Add a word to unlock
+                  </p>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-faint)] group-hover:text-[var(--color-primary)] transition-colors shrink-0" />
+            </div>
+          </Link>
+        </motion.div>
+
+        {/* ── Coming soon placeholder ── */}
+        <motion.div custom={3} initial="hidden" animate="show" variants={fadeUp}>
           <div className="flex items-center gap-4 p-5 bg-[var(--color-surface)]/60 border border-dashed border-[var(--color-border)] rounded-xl opacity-50">
             <div className="w-12 h-12 rounded-xl bg-[var(--color-surface-3)] flex items-center justify-center shrink-0">
               <span className="text-xl">🎯</span>

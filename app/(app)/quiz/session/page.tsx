@@ -173,7 +173,7 @@ function QuestionScreen({
   return (
     <div className="flex flex-col min-h-screen" style={{ paddingTop: 'var(--safe-area-top)' }}>
       {/* Progress */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 shrink-0">
         <div className="flex items-center gap-3 mb-3">
           <motion.button
             whileTap={{ scale: 0.88 }}
@@ -208,8 +208,8 @@ function QuestionScreen({
         </motion.p>
       </div>
 
-      {/* Question body */}
-      <div className="flex-1 flex flex-col px-4">
+      {/* Scrollable question body */}
+      <div className="flex-1 overflow-y-auto px-4" style={{ paddingBottom: selected !== null ? '180px' : '24px' }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={question.id}
@@ -217,7 +217,7 @@ function QuestionScreen({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -28 }}
             transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-            className="flex flex-col gap-5 flex-1"
+            className="flex flex-col gap-5"
           >
             {/* Prompt */}
             <div className="pt-2 pb-4 border-b border-[var(--color-border)]">
@@ -308,47 +308,49 @@ function QuestionScreen({
                 )
               })}
             </div>
-
-            {/* Feedback bar + Next */}
-            <AnimatePresence>
-              {selected !== null && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-                  className="mt-auto pb-4 flex flex-col gap-2"
-                >
-                  {!isCorrect && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="p-3 bg-[var(--color-surface-2)] rounded-xl border border-[var(--color-border)]"
-                    >
-                      <p className="text-[10px] text-[var(--color-text-faint)] uppercase tracking-widest mb-0.5">Correct answer</p>
-                      <p className="text-sm text-[var(--color-text)] font-semibold">{question.correctAnswer}</p>
-                    </motion.div>
-                  )}
-                  <motion.div whileTap={{ scale: 0.97 }}>
-                    <Button
-                      onClick={handleNext}
-                      size="xl"
-                      fullWidth
-                      className={isCorrect ? 'glow-success' : ''}
-                      variant={isCorrect ? 'success' : 'secondary'}
-                    >
-                      {isCorrect ? (
-                        <><Star className="w-4 h-4" /> Keep going <ArrowRight className="w-4 h-4" /></>
-                      ) : (
-                        <>Next <ArrowRight className="w-4 h-4" /></>
-                      )}
-                    </Button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Feedback + Next — fixed just above the bottom nav */}
+      <AnimatePresence>
+        {selected !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+            className="fixed left-0 right-0 z-30 px-4 pt-3 pb-4 flex flex-col gap-2 border-t border-[var(--color-border)] bg-[var(--background)]"
+            style={{ bottom: 'calc(4rem + var(--safe-area-bottom))' }}
+          >
+            {!isCorrect && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-3 bg-[var(--color-surface-2)] rounded-xl border border-[var(--color-border)]"
+              >
+                <p className="text-[10px] text-[var(--color-text-faint)] uppercase tracking-widest mb-0.5">Correct answer</p>
+                <p className="text-sm text-[var(--color-text)] font-semibold">{question.correctAnswer}</p>
+              </motion.div>
+            )}
+            <motion.div whileTap={{ scale: 0.97 }}>
+              <Button
+                onClick={handleNext}
+                size="xl"
+                fullWidth
+                className={isCorrect ? 'glow-success' : ''}
+                variant={isCorrect ? 'success' : 'secondary'}
+              >
+                {isCorrect ? (
+                  <><Star className="w-4 h-4" /> Keep going <ArrowRight className="w-4 h-4" /></>
+                ) : (
+                  <>Next <ArrowRight className="w-4 h-4" /></>
+                )}
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
