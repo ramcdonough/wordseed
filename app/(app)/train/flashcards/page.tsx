@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, RotateCcw, Check, X } from 'lucide-react'
 import Link from 'next/link'
-import { useWords } from '@/hooks/useWords'
+import { WordSourcePicker } from '@/components/train/WordSourcePicker'
 import { Button } from '@/components/ui/Button'
 import type { Word } from '@/types'
 
@@ -22,12 +22,12 @@ type CardResult = 'knew' | 'missed'
 
 export default function FlashcardsPage() {
   const router = useRouter()
-  const allWords = useWords() ?? []
+  const [sessionWords, setSessionWords] = useState<Word[] | null>(null)
 
   const deck = useMemo<Word[]>(
-    () => shuffle([...allWords]),
+    () => shuffle([...(sessionWords ?? [])]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allWords.length],
+    [sessionWords],
   )
 
   const [index, setIndex] = useState(0)
@@ -59,20 +59,9 @@ export default function FlashcardsPage() {
     setFinished(false)
   }, [])
 
-  // ── Empty state ──────────────────────────────────────────────────────
-  if (total === 0) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
-        <div className="text-5xl">🌱</div>
-        <h2 className="text-xl font-bold text-[var(--color-text)]">No words yet</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          Add some words to your collection to start flipping flashcards.
-        </p>
-        <Link href="/add">
-          <Button size="lg">Add words</Button>
-        </Link>
-      </div>
-    )
+  // ── Word source picker ───────────────────────────────────────────────
+  if (!sessionWords) {
+    return <WordSourcePicker minWords={1} modeTitle="Flashcards" onStart={setSessionWords} />
   }
 
   // ── Finished screen ──────────────────────────────────────────────────

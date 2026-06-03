@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, RotateCcw, Lightbulb, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import { useWords } from '@/hooks/useWords'
+import { WordSourcePicker } from '@/components/train/WordSourcePicker'
 import { Button } from '@/components/ui/Button'
 import type { Word } from '@/types'
 
@@ -58,9 +58,9 @@ function selectRoundWords(words: Word[]): Word[] {
 
 export default function JumblePage() {
   const router = useRouter()
-  const allWords = useWords() ?? []
+  const [sessionWords, setSessionWords] = useState<Word[] | null>(null)
 
-  const roundWords = useMemo(() => selectRoundWords(allWords), [allWords])
+  const roundWords = useMemo(() => selectRoundWords(sessionWords ?? []), [sessionWords])
 
   const [roundIndex, setRoundIndex] = useState(0)
   const [score, setScore] = useState(0)
@@ -137,20 +137,9 @@ export default function JumblePage() {
     }
   }, [roundIndex, totalRounds])
 
-  // ── Not enough words ────────────────────────────────────────────────
-  if (roundWords.length < 3) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
-        <div className="text-5xl">🌱</div>
-        <h2 className="text-xl font-bold text-[var(--color-text)]">Need more words</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          Add at least 3 words to your collection to play Jumble.
-        </p>
-        <Link href="/add">
-          <Button size="lg">Add words</Button>
-        </Link>
-      </div>
-    )
+  // ── Word source picker ───────────────────────────────────────────────
+  if (!sessionWords) {
+    return <WordSourcePicker minWords={3} modeTitle="Jumble" onStart={setSessionWords} />
   }
 
   // ── Finished screen ─────────────────────────────────────────────────

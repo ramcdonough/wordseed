@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Zap, Shuffle, ChevronRight, Lock, Layers } from 'lucide-react'
+import { Zap, Shuffle, ChevronRight, Lock, Layers, BookOpen, Sparkles } from 'lucide-react'
 import { useDueWords, useWordCount } from '@/hooks/useWords'
+
+const MIN_STORY_WORDS = 3
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -112,21 +114,60 @@ export default function TrainPage() {
           </Link>
         </motion.div>
 
-        {/* ── Coming soon placeholder ── */}
+        {/* ── Story ── */}
         <motion.div custom={3} initial="hidden" animate="show" variants={fadeUp}>
-          <div className="flex items-center gap-4 p-5 bg-[var(--color-surface)]/60 border border-dashed border-[var(--color-border)] rounded-xl opacity-50">
-            <div className="w-12 h-12 rounded-xl bg-[var(--color-surface-3)] flex items-center justify-center shrink-0">
-              <span className="text-xl">🎯</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-bold text-[var(--color-text)] text-base">More coming</span>
+          <Link href={totalActive >= MIN_STORY_WORDS ? '/train/story' : '#'}>
+            <div className={`group flex items-center gap-4 p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl paper-texture shadow-paper active:scale-[0.99] transition-all duration-150 ${totalActive >= MIN_STORY_WORDS ? 'hover:border-[var(--color-primary)]/40 cursor-pointer' : 'opacity-60 cursor-default'}`}>
+              <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center shrink-0">
+                <Sparkles className="w-6 h-6 text-[var(--color-primary)]" strokeWidth={2} />
               </div>
-              <p className="text-sm text-[var(--color-text-muted)] leading-snug">
-                New games and challenges on the way.
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-bold text-[var(--color-text)] text-base">Story</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-primary-subtle)] text-[var(--color-primary)]">
+                    AI
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--color-text-muted)] leading-snug">
+                  AI weaves your words into a paragraph. Fill in the blanks from the word bank.
+                </p>
+                {totalActive < MIN_STORY_WORDS && (
+                  <p className="text-xs text-[var(--color-text-faint)] mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Add at least {MIN_STORY_WORDS} words to unlock
+                  </p>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-faint)] group-hover:text-[var(--color-primary)] transition-colors shrink-0" />
             </div>
-          </div>
+          </Link>
+        </motion.div>
+
+        {/* ── Define It ── */}
+        <motion.div custom={4} initial="hidden" animate="show" variants={fadeUp}>
+          <Link href={totalActive >= 1 ? '/train/define' : '#'}>
+            <div className={`group flex items-center gap-4 p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl paper-texture shadow-paper active:scale-[0.99] transition-all duration-150 ${totalActive >= 1 ? 'hover:border-[var(--color-primary)]/40 cursor-pointer' : 'opacity-60 cursor-default'}`}>
+              <div className="w-12 h-12 rounded-xl bg-[var(--color-error)]/10 flex items-center justify-center shrink-0">
+                <BookOpen className="w-6 h-6 text-[var(--color-error)]" strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-bold text-[var(--color-text)] text-base">Define It</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-primary-subtle)] text-[var(--color-primary)]">
+                    AI
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--color-text-muted)] leading-snug">
+                  You're shown a word — try to define it in your own words. AI judges if you're right.
+                </p>
+                {totalActive < 1 && (
+                  <p className="text-xs text-[var(--color-text-faint)] mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Add a word to unlock
+                  </p>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-faint)] group-hover:text-[var(--color-primary)] transition-colors shrink-0" />
+            </div>
+          </Link>
         </motion.div>
       </div>
     </div>

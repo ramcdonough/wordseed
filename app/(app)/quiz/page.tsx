@@ -3,16 +3,19 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Zap, Settings2, BookOpen, Archive } from 'lucide-react'
+import { Zap, Settings2, BookOpen, Archive, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { useWordCount, useDueWords } from '@/hooks/useWords'
+import { useWordCount, useDueWords, useWords } from '@/hooks/useWords'
 import { useCollections } from '@/hooks/useCollections'
 import { getWordsForQuiz } from '@/lib/db/words'
 import { createQuizSession } from '@/lib/db/sessions'
 import { generateQuiz } from '@/lib/quiz/generator'
 import { useQuizStore } from '@/stores/quiz'
-import type { QuizConfig, QuestionType } from '@/types'
+import { discoverToWord } from '@/components/train/WordSourcePicker'
+import { DISCOVER_WORDS, CATEGORY_LABELS } from '@/lib/discover/words'
+import type { DiscoverCategory } from '@/lib/discover/words'
+import type { QuizConfig, QuestionType, Word } from '@/types'
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   word_to_definition: 'Word → Definition',
@@ -25,6 +28,8 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 
 const ALL_TYPES: QuestionType[] = Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]
 
+type QuizSourceType = 'library' | 'category' | 'custom'
+
 function QuizConfigContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -32,6 +37,7 @@ function QuizConfigContent() {
 
   const wordCount = useWordCount()
   const dueWords = useDueWords()
+  const allUserWords = useWords() ?? []
   const collections = useCollections() ?? []
 
   const [config, setConfig] = useState<QuizConfig>({
@@ -41,22 +47,51 @@ function QuizConfigContent() {
     questionTypes: ALL_TYPES,
     dueOnly: dueMode,
   })
+  const [sourceType, setSourceType] = useState<QuizSourceType>('library')
+  const [selectedCategory, setSelectedCategory] = useState<DiscoverCategory | null>(null)
+  const [customWordIds, setCustomWordIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const { startSession } = useQuizStore()
 
+  const categories = (Object.keys(CATEGORY_LABELS) as DiscoverCategory[]).filter((k) => k !== 'all')
+
   const available = dueMode ? (dueWords?.length ?? 0) : (wordCount?.active ?? 0)
-  const canStart = available >= 4
+
+  const canStart = (() => {
+    if (sourceType === 'library') return available >= 4
+    if (sourceType === 'category') return selectedCategory !== null
+    if (sourceType === 'custom') return customWordIds.size >= 4
+    return false
+  })()
+
+  function toggleCustomWord(id: string) {
+    setCustomWordIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   const handleStart = async (overrides?: Partial<QuizConfig>) => {
     setLoading(true)
     const effective = { ...config, ...overrides }
     try {
-      const words = await getWordsForQuiz(
-        effective.collectionId,
-        effective.includeArchived,
-        effective.wordCount,
-        effective.dueOnly
-      )
+      let words: Word[]
+
+      if (sourceType === 'category' && selectedCategory) {
+        words = DISCOVER_WORDS.filter((w) => w.category === selectedCategory).map(discoverToWord)
+        // Slice to wordCount for category
+        words = words.sort(() => Math.random() - 0.5).slice(0, effective.wordCount)
+      } else if (sourceType === 'custom') {
+        words = allUserWords.filter((w) => customWordIds.has(w.id))
+      } else {
+        words = await getWordsForQuiz(
+          effective.collectionId,
+          effective.includeArchived,
+          effective.wordCount,
+          effective.dueOnly
+        )
+      }
 
       if (words.length < 4) {
         alert('You need at least 4 words to start a quiz.')
@@ -71,8 +106,8 @@ function QuizConfigContent() {
 
       const session = await createQuizSession(
         words.map((w) => w.id),
-        config.collectionId,
-        config.includeArchived
+        sourceType === 'library' ? config.collectionId : null,
+        sourceType === 'library' ? config.includeArchived : false
       )
 
       startSession(session.id, questions)
@@ -127,7 +162,80 @@ function QuizConfigContent() {
           <p className="text-sm font-semibold text-[var(--color-text)]">Custom Quiz</p>
         </div>
 
+        {/* Word source */}
+        <Card>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-text-faint)] mb-3">Word Source</p>
+          <div className="flex gap-2 mb-3">
+            {(['library', 'category', 'custom'] as QuizSourceType[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setSourceType(t)}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold border capitalize transition-colors ${
+                  sourceType === t
+                    ? 'bg-[var(--color-primary-subtle)] border-[var(--color-primary)]/40 text-[var(--color-primary)]'
+                    : 'border-[var(--color-border)] text-[var(--color-text-muted)]'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {/* Category sub-picker */}
+          {sourceType === 'category' && (
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    selectedCategory === cat
+                      ? 'bg-[var(--color-primary-subtle)] border-[var(--color-primary)]/40 text-[var(--color-primary)]'
+                      : 'border-[var(--color-border)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {CATEGORY_LABELS[cat]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Custom sub-picker */}
+          {sourceType === 'custom' && (
+            <div className="flex flex-col gap-1.5 mt-1 max-h-48 overflow-y-auto">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-[var(--color-text-muted)]">{customWordIds.size} selected · need at least 4</p>
+                {customWordIds.size > 0 && (
+                  <button onClick={() => setCustomWordIds(new Set())} className="text-xs text-[var(--color-primary)] font-semibold">
+                    Clear
+                  </button>
+                )}
+              </div>
+              {allUserWords.map((word) => {
+                const sel = customWordIds.has(word.id)
+                return (
+                  <button
+                    key={word.id}
+                    onClick={() => toggleCustomWord(word.id)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left transition-colors ${
+                      sel
+                        ? 'bg-[var(--color-primary-subtle)] border-[var(--color-primary)]/40'
+                        : 'border-[var(--color-border)]'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${sel ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-border)]'}`}>
+                      {sel && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                    </div>
+                    <span className="text-sm font-medium text-[var(--color-text)] truncate">{word.word}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </Card>
+
         {/* Word count */}
+        {sourceType !== 'custom' && (
         <Card>
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-text-faint)] mb-3">Quiz Length</p>
           <div className="flex gap-2">
@@ -146,6 +254,7 @@ function QuizConfigContent() {
             ))}
           </div>
         </Card>
+        )}
 
         {/* Question types */}
         <Card>
@@ -175,8 +284,8 @@ function QuizConfigContent() {
           </div>
         </Card>
 
-        {/* Collections */}
-        {collections.length > 0 && (
+        {/* Collections — library mode only */}
+        {sourceType === 'library' && collections.length > 0 && (
           <Card>
             <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-text-faint)] mb-3">Collection</p>
             <div className="flex gap-1.5 flex-wrap">
@@ -207,8 +316,8 @@ function QuizConfigContent() {
           </Card>
         )}
 
-        {/* Include archived */}
-        <label className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl cursor-pointer">
+        {/* Include archived — library mode only */}
+        {sourceType === 'library' && <label className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl cursor-pointer">
           <div className="flex items-center gap-2">
             <Archive className="w-4 h-4 text-[var(--color-text-faint)]" />
             <span className="text-sm text-[var(--color-text)]">Include archived words</span>
@@ -219,7 +328,7 @@ function QuizConfigContent() {
           >
             <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${config.includeArchived ? 'translate-x-4' : ''}`} />
           </div>
-        </label>
+        </label>}
 
         <Button
           onClick={() => handleStart({ dueOnly: false })}
@@ -235,7 +344,11 @@ function QuizConfigContent() {
 
         {!canStart && (
           <p className="text-xs text-center text-[var(--color-text-faint)]">
-            You need at least 4 words to start a quiz
+            {sourceType === 'category'
+              ? 'Select a category above to start'
+              : sourceType === 'custom'
+              ? 'Select at least 4 words above'
+              : 'You need at least 4 words to start a quiz'}
           </p>
         )}
       </motion.div>
